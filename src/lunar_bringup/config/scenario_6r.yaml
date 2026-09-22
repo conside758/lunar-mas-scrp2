@@ -1,0 +1,112 @@
+# 6 机器人场景（scout×2 / excavator×2 / hauler×2）+ 2 depot + 8 异构资源（价值 3 档）。
+# 资源价值参考月球 ISRU 相对价值：水冰(value 3) > 钛铁矿/氧气源(value 2) > 月壤(value 1)。
+
+world:
+  file: "lunar_field.world"
+
+robots:
+  scout_0:
+    xacro: "scout.urdf.xacro"
+    entity: "scout"
+    namespace: "scout_0"
+    x: 0.0
+    y: 0.0
+    z: 0.34
+    yaw: 0.0
+    controllers_yaml: "scout_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "legs_controller"]
+    extra_nodes: ["scout_gait"]
+    cmd_vel_topic: "/scout_0/cmd_vel"
+    role: "SCOUT"
+  scout_1:
+    xacro: "scout.urdf.xacro"
+    entity: "scout"
+    namespace: "scout_1"
+    x: 0.5
+    y: -0.5
+    z: 0.34
+    yaw: 0.0
+    controllers_yaml: "scout_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "legs_controller"]
+    extra_nodes: ["scout_gait"]
+    cmd_vel_topic: "/scout_1/cmd_vel"
+    role: "SCOUT"
+  excavator_0:
+    xacro: "excavator.urdf.xacro"
+    entity: "excavator"
+    namespace: "excavator_0"
+    x: 0.8
+    y: 0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "excavator_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "arm_controller"]
+    cmd_vel_topic: "/excavator_0/drive_controller/cmd_vel_unstamped"
+    role: "EXCAVATOR"
+  excavator_1:
+    xacro: "excavator.urdf.xacro"
+    entity: "excavator"
+    namespace: "excavator_1"
+    x: -0.8
+    y: 0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "excavator_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "arm_controller"]
+    cmd_vel_topic: "/excavator_1/drive_controller/cmd_vel_unstamped"
+    role: "EXCAVATOR"
+  hauler_0:
+    xacro: "hauler.urdf.xacro"
+    entity: "hauler"
+    namespace: "hauler_0"
+    x: -0.8
+    y: -0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "hauler_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "dump_controller"]
+    cmd_vel_topic: "/hauler_0/drive_controller/cmd_vel_unstamped"
+    role: "HAULER"
+  hauler_1:
+    xacro: "hauler.urdf.xacro"
+    entity: "hauler"
+    namespace: "hauler_1"
+    x: 0.8
+    y: -0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "hauler_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "dump_controller"]
+    cmd_vel_topic: "/hauler_1/drive_controller/cmd_vel_unstamped"
+    role: "HAULER"
+
+resources:
+  # 水冰（高价值，量少）
+  - {id: 0, x: 2.0, y: 1.5, amount: 12.0, value: 3.0}
+  - {id: 1, x: -2.5, y: 2.0, amount: 10.0, value: 3.0}
+  # 钛铁矿（中价值）
+  - {id: 2, x: 1.5, y: -2.5, amount: 20.0, value: 2.0}
+  - {id: 3, x: 3.0, y: -1.0, amount: 18.0, value: 2.0}
+  # 月壤（低价值，量大）
+  - {id: 4, x: -3.0, y: -1.5, amount: 25.0, value: 1.0}
+  - {id: 5, x: 0.5, y: 3.0, amount: 22.0, value: 1.0}
+  - {id: 6, x: -1.0, y: -3.0, amount: 20.0, value: 1.0}
+  - {id: 7, x: 3.5, y: 1.0, amount: 24.0, value: 1.0}
+
+depots:
+  - {x: -2.0, y: -1.5}   # 主卸载点（左下）
+  - {x: 2.5, y: 2.0}     # 次级卸载点（右上，靠近水冰/钛铁矿簇）
+
+episode:
+  max_time_s: 120.0
+  control_horizon_s: 0.5
+  sim_time_step_s: 0.01
+  dig_radius: 0.6
+  load_radius: 0.7
+  dump_radius: 0.7
+  bucket_capacity: 4.0
+  bin_capacity: 10.0
+  dig_rate_per_s: 2.0
+  dump_rate_per_s: 2.0
+  variable_resources: false
+  dynamic_respawn: false

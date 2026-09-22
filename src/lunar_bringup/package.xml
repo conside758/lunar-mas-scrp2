@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunar_bringup</name>
+  <version>0.1.0</version>
+  <description>Top-level launch and scenario config for the lunar multi-agent system.</description>
+  <maintainer email="admina@example.com">admina</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>lunar_descriptions</exec_depend>
+  <exec_depend>lunar_gazebo</exec_depend>
+  <exec_depend>lunar_control</exec_depend>
+  <exec_depend>lunar_task</exec_depend>
+  <exec_depend>lunar_perception</exec_depend>
+  <exec_depend>lunar_env</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

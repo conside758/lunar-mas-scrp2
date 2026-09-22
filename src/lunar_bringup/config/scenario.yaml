@@ -1,0 +1,65 @@
+# 场景单源配置：资源区、卸载点、机器人初始位姿、回合参数。
+# resource_manager 与 lunar_env 均读取此文件。
+
+world:
+  file: "lunar_field.world"
+
+robots:
+  scout:
+    xacro: "scout.urdf.xacro"
+    entity: "scout"
+    namespace: "scout"
+    x: 0.0
+    y: 0.0
+    z: 0.34
+    yaw: 0.0
+    controllers_yaml: "scout_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "legs_controller"]
+    extra_nodes: ["scout_gait"]
+    cmd_vel_topic: "/scout/cmd_vel"
+    role: "SCOUT"
+  excavator:
+    xacro: "excavator.urdf.xacro"
+    entity: "excavator"
+    namespace: "excavator"
+    x: 0.8
+    y: 0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "excavator_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "arm_controller"]
+    cmd_vel_topic: "/excavator/drive_controller/cmd_vel_unstamped"
+    role: "EXCAVATOR"
+  hauler:
+    xacro: "hauler.urdf.xacro"
+    entity: "hauler"
+    namespace: "hauler"
+    x: -0.8
+    y: -0.5
+    z: 0.12
+    yaw: 0.0
+    controllers_yaml: "hauler_controllers.yaml"
+    controllers: ["joint_state_broadcaster", "drive_controller", "dump_controller"]
+    cmd_vel_topic: "/hauler/drive_controller/cmd_vel_unstamped"
+    role: "HAULER"
+
+resources:
+  - {id: 0, x: 2.0, y: 1.5, amount: 20.0, value: 1.0}
+  - {id: 1, x: -2.5, y: 2.0, amount: 15.0, value: 1.0}
+  - {id: 2, x: 1.5, y: -2.5, amount: 25.0, value: 1.0}
+
+depot:
+  x: -2.0
+  y: -1.5
+
+episode:
+  max_time_s: 120.0
+  control_horizon_s: 0.5
+  sim_time_step_s: 0.01
+  # 作业半径/容量
+  dig_radius: 0.6
+  load_radius: 0.7
+  dump_radius: 0.7
+  bucket_capacity: 4.0
+  bin_capacity: 10.0
+  dig_rate_per_s: 2.0

@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="lunar_field">
+
+    <!-- 发布 /gazebo/link_states、/gazebo/model_states 及 set/get_entity_state 服务。
+         gazebo_ros 3.9 把状态接口拆到 libgazebo_ros_state.so，标准 launch 不加载，需在此显式加载。 -->
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+      <update_rate>30.0</update_rate>
+    </plugin>
+
+    <!-- 场景：降低环境光、深色天空背景，避免过曝并提高对比度 -->
+    <scene>
+      <ambient>0.30 0.30 0.34 1</ambient>
+      <background>0.05 0.06 0.10 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- 自定义月面地面（灰棕色；用大盒子代替 plane，保证 ODE 摩擦稳定生效） -->
+    <model name="lunar_ground">
+      <static>true</static>
+      <link name="link">
+        <pose>0 0 -0.05 0 0 0</pose>
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>200 200 0.1</size>
+            </box>
+          </geometry>
+          <surface>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+              </ode>
+            </contact>
+            <friction>
+              <ode>
+                <mu>1.5</mu>
+                <mu2>1.5</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>200 200 0.1</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.30 0.28 0.26 1</ambient>
+            <diffuse>0.55 0.50 0.46 1</diffuse>
+            <specular>0.02 0.02 0.02 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <physics name="default_physics" default="true" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_update_rate>1000</real_time_update_rate>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- 单一平行光：中低亮度 + 低高光，避免过度曝光 -->
+    <light name="sun_light" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>5 5 10 0 0.7 0</pose>
+      <diffuse>0.55 0.55 0.60 1</diffuse>
+      <specular>0.03 0.03 0.03 1</specular>
+      <direction>-0.4 -0.35 -0.8</direction>
+    </light>
+
+    <!-- 静态障碍物（通用环境；避开资源区与卸载点连线） -->
+    <model name="obstacle_0">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 0.6 0.6</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 0.6 0.6</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.20 1</ambient>
+            <diffuse>0.30 0.29 0.28 1</diffuse>
+            <specular>0.02 0.02 0.02 1</specular>
+          </material>
+        </visual>
+      </link>
+      <pose>3.0 2.0 0.3 0 0 0</pose>
+    </model>
+
+    <model name="obstacle_1">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 0.8</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.20 1</ambient>
+            <diffuse>0.30 0.29 0.28 1</diffuse>
+            <specular>0.02 0.02 0.02 1</specular>
+          </material>
+        </visual>
+      </link>
+      <pose>-3.0 -1.0 0.4 0 0 0.3</pose>
+    </model>
+
+    <model name="obstacle_2">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.8 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.8 0.5</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.20 1</ambient>
+            <diffuse>0.30 0.29 0.28 1</diffuse>
+            <specular>0.02 0.02 0.02 1</specular>
+          </material>
+        </visual>
+      </link>
+      <pose>2.0 -3.0 0.25 0 0 0.6</pose>
+    </model>
+  </world>
+</sdf>

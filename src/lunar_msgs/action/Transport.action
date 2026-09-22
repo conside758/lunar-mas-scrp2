@@ -1,0 +1,10 @@
+# 运输动作：Hauler 从 zone_id 装载并运到 depot_id 卸载
+int32 zone_id
+int32 depot_id
+float32 units
+---
+float32 units_delivered
+bool success
+---
+float32 cargo
+string stage               # TO_ZONE | LOADING | TO_DEPOT | DUMPING

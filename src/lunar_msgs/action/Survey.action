@@ -1,0 +1,8 @@
+# 探测动作：Scout 探测以 center 为圆心 radius 半径的区域
+geometry_msgs/Pose center
+float32 radius
+---
+lunar_msgs/ResourceDetection[] detections
+bool success
+---
+int32 zones_found

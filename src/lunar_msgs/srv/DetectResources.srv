@@ -1,0 +1,5 @@
+# 探测服务：返回 center/radius 范围内的资源探测结果
+geometry_msgs/Pose center
+float32 radius
+---
+lunar_msgs/ResourceDetection[] detections

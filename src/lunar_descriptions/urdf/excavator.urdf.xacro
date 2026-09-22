@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="excavator">
+  <xacro:include filename="$(find lunar_descriptions)/urdf/common.xacro"/>
+
+  <!-- ===== 底盘 ===== -->
+  <link name="base_link">
+    <visual>
+      <geometry><box size="0.42 0.34 0.12"/></geometry>
+      <material name="lunar_grey"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.42 0.34 0.12"/></geometry>
+    </collision>
+    <xacro:box_inertial mass="8.0" lx="0.42" ly="0.34" lz="0.12"/>
+  </link>
+
+  <!-- ===== 驱动轮（差分）===== -->
+  <xacro:drive_wheel prefix="left" parent="base_link" xyz="0 0.19 -0.04" rpy="1.5708 0 0" mass="0.5" radius="0.08" width="0.04"/>
+  <xacro:drive_wheel prefix="right" parent="base_link" xyz="0 -0.19 -0.04" rpy="1.5708 0 0" mass="0.5" radius="0.08" width="0.04"/>
+
+  <!-- ===== 支撑滑垫（低摩擦，转弯时滑动）===== -->
+  <xacro:skid_pad prefix="front" parent="base_link" xyz="0.19 0 -0.09" mass="0.05" radius="0.03"/>
+  <xacro:skid_pad prefix="rear" parent="base_link" xyz="-0.19 0 -0.09" mass="0.05" radius="0.03"/>
+
+  <!-- ===== 机械臂（3 DOF 平面臂 + 铲斗）===== -->
+  <link name="arm_base_link">
+    <visual>
+      <geometry><box size="0.08 0.08 0.08"/></geometry>
+      <material name="lunar_dark"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.08 0.08 0.08"/></geometry>
+    </collision>
+    <xacro:box_inertial mass="0.3" lx="0.08" ly="0.08" lz="0.08"/>
+  </link>
+  <joint name="arm_base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_base_link"/>
+    <origin xyz="0.15 0 0.10" rpy="0 0 0"/>
+  </joint>
+
+  <link name="upper_arm_link">
+    <visual>
+      <geometry><box size="0.05 0.05 0.25"/></geometry>
+      <material name="lunar_orange"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.05 0.05 0.25"/></geometry>
+    </collision>
+    <xacro:box_inertial mass="0.4" lx="0.05" ly="0.05" lz="0.25"/>
+  </link>
+  <joint name="shoulder_pitch_joint" type="revolute">
+    <parent link="arm_base_link"/>
+    <child link="upper_arm_link"/>
+    <origin xyz="0 0 0.04" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.5" upper="2.5" effort="20" velocity="3"/>
+  </joint>
+
+  <link name="forearm_link">
+    <visual>
+      <geometry><box size="0.05 0.05 0.22"/></geometry>
+      <material name="lunar_orange"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.05 0.05 0.22"/></geometry>
+    </collision>
+    <xacro:box_inertial mass="0.35" lx="0.05" ly="0.05" lz="0.22"/>
+  </link>
+  <joint name="elbow_pitch_joint" type="revolute">
+    <parent link="upper_arm_link"/>
+    <child link="forearm_link"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.5" upper="2.5" effort="20" velocity="3"/>
+  </joint>
+
+  <link name="bucket_link">
+    <visual>
+      <geometry><box size="0.16 0.12 0.09"/></geometry>
+      <material name="lunar_green"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.16 0.12 0.09"/></geometry>
+    </collision>
+    <xacro:box_inertial mass="0.3" lx="0.16" ly="0.12" lz="0.09"/>
+  </link>
+  <joint name="wrist_pitch_joint" type="revolute">
+    <parent link="forearm_link"/>
+    <child link="bucket_link"/>
+    <origin xyz="0 0 0.22" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.5" upper="2.5" effort="20" velocity="3"/>
+  </joint>
+
+  <!-- ===== gazebo_ros2_control 桥接 ===== -->
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>excavator_rsp</robot_param_node>
+      <parameters>$(find lunar_control)/config/excavator_controllers.yaml</parameters>
+      <ros>
+        <namespace>excavator</namespace>
+      </ros>
+    </plugin>
+  </gazebo>
+
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="left_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="shoulder_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="elbow_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="wrist_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+</robot>

@@ -1,0 +1,8 @@
+# 挖掘动作：Excavator 在 zone_id 挖掘 target_units 单位
+int32 zone_id
+float32 target_units
+---
+float32 units_extracted
+bool success
+---
+float32 progress

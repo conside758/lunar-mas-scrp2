@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===== 材质 ===== -->
+  <material name="lunar_grey"><color rgba="0.5 0.5 0.55 1"/></material>
+  <material name="lunar_dark"><color rgba="0.25 0.25 0.28 1"/></material>
+  <material name="lunar_black"><color rgba="0.08 0.08 0.08 1"/></material>
+  <material name="lunar_blue"><color rgba="0.2 0.4 0.9 1"/></material>
+  <material name="lunar_orange"><color rgba="0.9 0.5 0.1 1"/></material>
+  <material name="lunar_green"><color rgba="0.2 0.8 0.3 1"/></material>
+  <material name="lunar_yellow"><color rgba="0.95 0.85 0.2 1"/></material>
+
+  <!-- ===== 盒体质心惯性（单位 SI）===== -->
+  <xacro:macro name="box_inertial" params="mass lx ly lz">
+    <inertial>
+      <mass value="${mass}"/>
+      <inertia ixx="${mass*(ly*ly+lz*lz)/12.0}" iyy="${mass*(lx*lx+lz*lz)/12.0}"
+               izz="${mass*(lx*lx+ly*ly)/12.0}" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ===== 驱动轮（绕 y 轴滚动，差分驱动用）===== -->
+  <xacro:macro name="drive_wheel" params="prefix parent xyz rpy mass radius width">
+    <link name="${prefix}_wheel">
+      <visual>
+        <geometry><cylinder radius="${radius}" length="${width}"/></geometry>
+        <material name="lunar_black"/>
+      </visual>
+      <collision>
+        <geometry><cylinder radius="${radius}" length="${width}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${mass*radius*radius/2.0}" iyy="${mass*radius*radius/2.0}"
+                 izz="${mass*radius*radius/2.0}" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="${prefix}_wheel"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <axis xyz="0 0 -1"/>
+      <limit effort="50" velocity="20"/>
+      <dynamics damping="0.1"/>
+    </joint>
+    <gazebo reference="${prefix}_wheel">
+      <mu1>1.5</mu1>
+      <mu2>1.5</mu2>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- ===== 低摩擦支撑滑垫（前后各一，保持四点着地稳定）===== -->
+  <xacro:macro name="skid_pad" params="prefix parent xyz mass radius">
+    <link name="${prefix}_pad">
+      <visual>
+        <geometry><sphere radius="${radius}"/></geometry>
+        <material name="lunar_dark"/>
+      </visual>
+      <collision>
+        <geometry><sphere radius="${radius}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${2.0*mass*radius*radius/5.0}" iyy="${2.0*mass*radius*radius/5.0}"
+                 izz="${2.0*mass*radius*radius/5.0}" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+    <joint name="${prefix}_pad_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${prefix}_pad"/>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+    </joint>
+    <gazebo reference="${prefix}_pad">
+      <mu1>0.05</mu1>
+      <mu2>0.05</mu2>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- ===== 普通连杆（盒体）===== -->
+  <xacro:macro name="box_link" params="name mass lx ly lz material">
+    <link name="${name}">
+      <visual>
+        <geometry><box size="${lx} ${ly} ${lz}"/></geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <geometry><box size="${lx} ${ly} ${lz}"/></geometry>
+      </collision>
+      <xacro:box_inertial mass="${mass}" lx="${lx}" ly="${ly}" lz="${lz}"/>
+    </link>
+  </xacro:macro>
+
+</robot>
