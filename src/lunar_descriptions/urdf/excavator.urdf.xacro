@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="excavator">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg name)">
+  <xacro:arg name="name" default="excavator"/>
+  <xacro:arg name="ns" default="excavator"/>
   <xacro:include filename="$(find lunar_descriptions)/urdf/common.xacro"/>
 
   <!-- ===== 底盘 ===== -->
@@ -97,10 +99,10 @@
   <gazebo>
     <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
       <robot_param>robot_description</robot_param>
-      <robot_param_node>excavator_rsp</robot_param_node>
+      <robot_param_node>$(arg name)_rsp</robot_param_node>
       <parameters>$(find lunar_control)/config/excavator_controllers.yaml</parameters>
       <ros>
-        <namespace>excavator</namespace>
+        <namespace>$(arg ns)</namespace>
       </ros>
     </plugin>
   </gazebo>

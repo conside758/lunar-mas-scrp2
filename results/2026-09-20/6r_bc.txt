@@ -1,0 +1,4 @@
+scenario=/home/admina/MAS_ws/src/lunar_bringup/config/scenario_6r.yaml
+seed=0 bc_episodes=40 bc_epochs=30
+VarRoleAware delivered=75.0
+FlatActor delivered=8.0

@@ -1,15 +1,18 @@
-"""运动自检节点：在 bringup 进程组内验证三台车能否被 cmd_vel 驱动移动。
+"""运动自检节点：在 bringup 进程组内验证各台车能否被 cmd_vel 驱动移动（支持 N 机器人）。
 
 用途：绕开沙箱「跨进程 DDS 投递受限」的限制——本节点由 launch 与 gzserver 同进程组启动，
 因此能可靠收发 ROS 话题，用于验证车轮方向/速度接口/步态是否真正让机器人移动。
 
-测试流程（依次对 excavator → hauler → scout）：
+用法：ros2 run lunar_env motion_self_test <scenario_file>
+流程（依次对每台机器人）：
   1) 记录 base_link 当前位姿；
   2) 发布 0.5 m/s 前进 cmd_vel 持续 4 s；
   3) 记录结束位姿并打印位移。
 """
+import sys
 import time
 
+import yaml
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
@@ -17,48 +20,39 @@ from gazebo_msgs.msg import LinkStates
 from sensor_msgs.msg import JointState
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 
-ROBOT_TOPICS = {
-    "excavator": "/excavator/drive_controller/cmd_vel_unstamped",
-    "hauler": "/hauler/drive_controller/cmd_vel_unstamped",
-    "scout": "/scout/cmd_vel",
-}
 TEST_DURATION = 4.0
 LIN_VEL = 0.5
 
 
 class MotionSelfTest(Node):
-    def __init__(self):
+    def __init__(self, scenario_file):
         super().__init__("motion_self_test")
+        with open(scenario_file, 'r', encoding='utf-8') as f:
+            scenario = yaml.safe_load(f)
+        self.robots = list(scenario['robots'].keys())
+        self.topics = {n: scenario['robots'][n].get(
+            'cmd_vel_topic', f"/{scenario['robots'][n]['namespace']}/cmd_vel")
+            for n in self.robots}
+
         self.link_pose = {}
-        self.joint_vel = {}
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE,
                          durability=DurabilityPolicy.VOLATILE)
         self.create_subscription(LinkStates, "/gazebo/link_states", self._cb, qos)
-        # 记录轮速，用于诊断「命令未达 vs 打滑」
-        self.create_subscription(
-            JointState, "/excavator/joint_states", self._joint_cb,
-            QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT,
-                       durability=DurabilityPolicy.VOLATILE))
-        self.pubs = {n: self.create_publisher(Twist, t, 10) for n, t in ROBOT_TOPICS.items()}
+        self.pubs = {n: self.create_publisher(Twist, t, 10) for n, t in self.topics.items()}
 
-        self.robots = list(ROBOT_TOPICS.keys())
         self.idx = 0
         self.phase = "record_before"
         self.before = None
         self.t0 = 0.0
         self.timer = self.create_timer(0.1, self._tick)
-        self.get_logger().info("motion self test started")
+        self.get_logger().info(f"motion self test started for {len(self.robots)} robots: "
+                               f"{self.robots}")
 
     def _cb(self, msg):
         for name, pose, _twist in zip(msg.name, msg.pose, msg.twist):
             for rn in self.robots:
                 if name == f"{rn}::base_link":
                     self.link_pose[rn] = (pose.position.x, pose.position.y)
-
-    def _joint_cb(self, msg):
-        for nm, vel in zip(msg.name, msg.velocity):
-            if "wheel" in nm:
-                self.joint_vel[nm] = vel
 
     def _tick(self):
         if self.idx >= len(self.robots):
@@ -68,7 +62,7 @@ class MotionSelfTest(Node):
             return
 
         name = self.robots[self.idx]
-        if len(self.link_pose) < len(self.robots):
+        if name not in self.link_pose:
             self.get_logger().info(
                 f"waiting for link_states... {len(self.link_pose)}/{len(self.robots)}")
             return
@@ -92,9 +86,6 @@ class MotionSelfTest(Node):
                     self.get_logger().info(
                         f"[{name}] before={self.before} after={after} "
                         f"displacement={dist:.3f} m  (dx={dx:.3f}, dy={dy:.3f})")
-                    if name == "excavator":
-                        self.get_logger().info(
-                            f"[excavator] wheel velocities = {self.joint_vel}")
                 else:
                     self.get_logger().warn(f"[{name}] missing pose data")
                 self.idx += 1
@@ -109,7 +100,8 @@ class MotionSelfTest(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MotionSelfTest()
+    scenario_file = sys.argv[1] if len(sys.argv) > 1 else None
+    node = MotionSelfTest(scenario_file)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

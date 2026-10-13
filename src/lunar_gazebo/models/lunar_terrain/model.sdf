@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <!-- 地形模型：视觉用全分辨率 OBJ，碰撞用 Gazebo heightmap（65x65 平滑高度场，供机器人行驶）。
+       0.2m 减面 mesh 仍会在局部棱边卡住轮子（whack-a-mole）；heightmap 用 ODE heightfield
+       双线性插值，无 mesh 棱边，轮子平滑滚动。65x65 分辨率比 257x257 快 16×，避免加载/初始化
+       超时导致的 controller_manager load_controller 卡死。
+
+       heightmap 高度映射（gazebo classic 约定）：黑(0)→最低点，白(255)→最高点，
+       实际高度 = pos.z + (像素/255)*size.z。
+       本 DEM（terrain_dem.png，8-bit 65x65）：pos.z=-0.025（最低点），size.z=0.154（起伏范围）
+       → 高度 ∈ [-0.025, 0.129]，与视觉 OBJ 及 lunar_rl.terrain.HS=0.0006 对齐。 -->
+  <model name="lunar_terrain">
+    <static>true</static>
+    <!-- 视觉 link：全分辨率 OBJ + 贴图 -->
+    <link name="terrain_link">
+      <pose>0 0 0.052 1.5708 0 0</pose>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://lunar_terrain/meshes/terrain.obj</uri>
+            <scale>0.004 0.0006 0.004</scale>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <!-- 碰撞 link：平滑 heightmap -->
+    <link name="collision_link">
+      <collision name="collision">
+        <geometry>
+          <heightmap>
+            <uri>model://lunar_terrain/materials/terrain_dem.png</uri>
+            <size>16 16 0.154</size>
+            <pos>0 0 -0.025</pos>
+          </heightmap>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.5</mu>
+              <mu2>1.5</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>100.0</kd>
+              <max_vel>1.0</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>

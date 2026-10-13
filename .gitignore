@@ -15,6 +15,9 @@ pylib/
 # 第三方 overlay（本地对 gazebo_ros2_control 的补丁副本，不纳入本仓库）
 src/gz2c_fixed/
 
+# 第三方商业 3D 模型原始素材（207MB，3d66.com 来源，仅本地使用；见 docs/9.29-10.6.md）
+map_model/
+
 # Python
 __pycache__/
 *.py[cod]

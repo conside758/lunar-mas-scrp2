@@ -20,6 +20,7 @@ import math
 import numpy as np
 
 from lunar_rl.registry import ROBOT_NAMES, ROBOT_ROLE, ROLES
+from lunar_rl.terrain import get_terrain, TERRAIN_DIM
 
 
 def encode_obs(raw_obs):
@@ -106,7 +107,9 @@ def obs_dim():
 
 
 # ---------- 变规模观测（资源/队友/depot 实体 + 掩码，注意力池化用） ----------
-FIXED_DIM = 13  # self(4) + role(3) + rel_nearest_depot(2) + rel_goal_world(2) + rel_goal_body(2)
+# fixed(13) = self(4) + role(3) + rel_nearest_depot(2) + rel_goal_world(2) + rel_goal_body(2)
+# 追加地形特征：K 采样点×[相对高度,前向坡度,侧向坡度] + [roll, pitch]（见 terrain.TERRAIN_DIM）
+FIXED_DIM = 13 + TERRAIN_DIM
 
 
 def encode_obs_vars(raw_obs, max_res, max_team=2, max_depot=2):
@@ -126,6 +129,9 @@ def encode_obs_vars(raw_obs, max_res, max_team=2, max_depot=2):
         det_mask = np.ones(len(resources), dtype=np.float32)
     else:
         det_mask = np.asarray(det, dtype=np.float32)
+
+    terrain = get_terrain()
+    roll_pitch = raw_obs.get("roll_pitch", {})
 
     n_res = min(len(resources), max_res)
     n_dep = min(len(depots), max_depot)
@@ -149,8 +155,14 @@ def encode_obs_vars(raw_obs, max_res, max_team=2, max_depot=2):
         c, s = math.cos(yaw), math.sin(yaw)
         rel_goal_body = np.array([rel_goal[0] * c + rel_goal[1] * s,
                                   -rel_goal[0] * s + rel_goal[1] * c], dtype=np.float32)
+        # 地形特征：K 采样点 [相对高度,前向坡度,侧向坡度] + roll/pitch
+        tfeat = terrain.features(x, y, yaw)  # (N_TERRAIN_SAMPLES*3,)
+        rp = roll_pitch.get(name)
+        if rp is None:
+            rp = terrain.roll_pitch(x, y, yaw)  # surrogate 准静态回退
+        rp = np.asarray(rp, dtype=np.float32)[:2]
         fixed = np.concatenate([[x, y, yaw, cargo], role, rel_depot,
-                                rel_goal, rel_goal_body]).astype(np.float32)  # (13,)
+                                rel_goal, rel_goal_body, tfeat, rp]).astype(np.float32)
 
         res_ent = np.zeros((max_res, 5), dtype=np.float32)
         res_mask = np.zeros(max_res, dtype=np.float32)

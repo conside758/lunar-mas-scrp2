@@ -1,0 +1,4 @@
+scenario=/home/admina/MAS_ws/src/lunar_bringup/config/scenario_6r.yaml
+load_actor=.tmp/6r_bc_var.pt
+collect_episodes=20 awac_epochs=30 lam=1.0 q_epochs=30
+final_value=106.0

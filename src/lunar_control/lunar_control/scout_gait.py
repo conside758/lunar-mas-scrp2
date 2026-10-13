@@ -41,16 +41,20 @@ class ScoutGait(Node):
     def __init__(self):
         super().__init__('scout_gait')
 
+        # 自身命名空间即机器人名（如 /scout_0 → scout_0），用于在 link_states 里
+        # 匹配本机的 base_link（支持同角色多实例，不再硬编码 scout）。
+        self.robot_name = self.get_namespace().lstrip('/') or 'scout'
+
         self.declare_parameter('update_rate', 50.0)
         self.declare_parameter('hip_amplitude', 0.15)
         self.declare_parameter('knee_lift', 0.12)
         self.declare_parameter('stance_knee', 0.15)
         self.declare_parameter('step_freq_per_ms', 2.5)   # 每 m/s 的步频
-        self.declare_parameter('turn_bias', 0.12)          # 转弯时左右髋偏置
-        self.declare_parameter('max_lin', 0.4)
-        self.declare_parameter('max_ang', 0.6)
+        self.declare_parameter('turn_bias', 0.02)          # 转弯时左右髋偏置（再降，减小侧向倾覆）
+        self.declare_parameter('max_lin', 0.2)
+        self.declare_parameter('max_ang', 0.2)             # 限制转向角速度，避免腿式转向侧翻
         self.declare_parameter('ramp_time', 0.8)           # 进入/退出步态的平滑时间(s)
-        self.declare_parameter('kp_speed', 2.0)            # 速度误差比例增益
+        self.declare_parameter('kp_speed', 1.0)            # 速度误差比例增益（降低，抑制能量泵）
 
         self.rate = self.get_parameter('update_rate').value
         self.hip_amp = self.get_parameter('hip_amplitude').value
@@ -86,7 +90,7 @@ class ScoutGait(Node):
 
     def link_cb(self, msg: LinkStates):
         for name, twist in zip(msg.name, msg.twist):
-            if name == 'scout::base_link':
+            if name == f'{self.robot_name}::base_link':
                 self.actual_vx = twist.linear.x
                 break
 

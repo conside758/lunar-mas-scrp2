@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 from lunar_rl.networks import ROBOT_NAMES, Actor, VarRoleAwareActor
-from lunar_rl.obs import encode_obs_vars, flat_vars, flat_vars_dim
+from lunar_rl.obs import encode_obs_vars, flat_vars, flat_vars_dim, FIXED_DIM
 from lunar_rl.registry import ROBOT_ROLE, ROLE_TOOL_DIM
 from lunar_rl.rule_policy import rule_action
 from lunar_rl.runlog import plot_bars, run_dir, write_summary
@@ -195,7 +195,7 @@ def main():
     print(f"[collect] {len(data)} samples", flush=True)
 
     # 两种 actor 用同一份数据训练
-    var_actors = {n: VarRoleAwareActor(fixed_dim=13, hidden=128) for n in ROBOT_NAMES}
+    var_actors = {n: VarRoleAwareActor(fixed_dim=FIXED_DIM, hidden=128) for n in ROBOT_NAMES}
     flat_actors = {n: Actor(obs_dim=flat_vars_dim(MAX_RES, MAX_TEAM), hidden=128)
                    for n in ROBOT_NAMES}
     print("[bc] training VarRoleAwareActor...", flush=True)

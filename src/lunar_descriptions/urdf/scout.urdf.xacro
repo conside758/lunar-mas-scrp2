@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="scout">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg name)">
+  <xacro:arg name="name" default="scout"/>
+  <xacro:arg name="ns" default="scout"/>
   <xacro:include filename="$(find lunar_descriptions)/urdf/common.xacro"/>
 
   <!-- ===== 腿宏：髋 + 膝 + 足，均绕 y 轴（矢状面运动）===== -->
@@ -83,11 +85,11 @@
     <mu2>0.5</mu2>
   </gazebo>
 
-  <!-- ===== 四条腿 ===== -->
-  <xacro:leg prefix="fl" x="0.12" y="0.08"/>
-  <xacro:leg prefix="fr" x="0.12" y="-0.08"/>
-  <xacro:leg prefix="rl" x="-0.12" y="0.08"/>
-  <xacro:leg prefix="rr" x="-0.12" y="-0.08"/>
+  <!-- ===== 四条腿（进一步加宽横向间距，抑制侧向翻倒）===== -->
+  <xacro:leg prefix="fl" x="0.12" y="0.18"/>
+  <xacro:leg prefix="fr" x="0.12" y="-0.18"/>
+  <xacro:leg prefix="rl" x="-0.12" y="0.18"/>
+  <xacro:leg prefix="rr" x="-0.12" y="-0.18"/>
 
   <!-- ===== 3D 激光雷达（顶部前侧，输出 sensor_msgs/PointCloud2） ===== -->
   <link name="lidar_link">
@@ -134,11 +136,11 @@
       <visualize>false</visualize>
       <plugin name="scout_lidar_3d" filename="libgazebo_ros_ray_sensor.so">
         <ros>
-          <namespace>/scout</namespace>
+          <namespace>/$(arg ns)</namespace>
           <remapping>~/out:=scan_3d</remapping>
         </ros>
         <output_type>sensor_msgs/PointCloud2</output_type>
-        <frame_name>scout/lidar_link</frame_name>
+        <frame_name>$(arg ns)/lidar_link</frame_name>
       </plugin>
     </sensor>
   </gazebo>
@@ -147,10 +149,10 @@
   <gazebo>
     <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
       <robot_param>robot_description</robot_param>
-      <robot_param_node>scout_rsp</robot_param_node>
+      <robot_param_node>$(arg name)_rsp</robot_param_node>
       <parameters>$(find lunar_control)/config/scout_controllers.yaml</parameters>
       <ros>
-        <namespace>scout</namespace>
+        <namespace>$(arg ns)</namespace>
       </ros>
     </plugin>
   </gazebo>

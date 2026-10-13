@@ -246,7 +246,7 @@ class VarRoleAwareActor(nn.Module):
       res_mask / depot_mask / team_mask  有效实体掩码
     注意力对实体数量不敏感（置换不变），是变规模 + 任务/目的地选择泛化的关键。
     """
-    def __init__(self, fixed_dim=13, hidden=128, attn_dim=64, drive_logstd_init=-0.7):
+    def __init__(self, fixed_dim=36, hidden=128, attn_dim=64, drive_logstd_init=-0.7):
         super().__init__()
         self.attn_dim = attn_dim
         self.base = nn.Sequential(

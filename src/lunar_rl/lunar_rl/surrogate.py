@@ -9,16 +9,23 @@ import numpy as np
 import yaml
 
 from lunar_rl.registry import set_robots
-from lunar_rl.rewards import DEFAULT_WEIGHTS, goal_for, goal_key_for
+from lunar_rl.rewards import (DEFAULT_WEIGHTS, SLOPE_PENALTY_TAN, TIP_LIMIT_RAD,
+                              TaskAllocator, goal_for, goal_key_for)
+from lunar_rl.rule_policy import reset_rule_state
+from lunar_rl.terrain import get_terrain
 
 
 class SurrogateEnv:
     """与 LunarEnv 接口一致的快速替身环境（纯 Python，无 ROS/Gazebo）。"""
 
     def __init__(self, scenario_file, max_lin=0.4, max_ang=0.8, stage="full",
-                 domain_rand=False):
+                 domain_rand=False, committed=True, hysteresis=0.3):
         self.stage = stage
         self.domain_rand = domain_rand
+        self.committed = committed
+        self.hysteresis = hysteresis
+        self.terrain = get_terrain()
+        self.allocator = TaskAllocator(hysteresis=hysteresis) if committed else None
         with open(scenario_file, "r", encoding="utf-8") as f:
             self.scenario = yaml.safe_load(f)
         ep = self.scenario["episode"]
@@ -34,6 +41,9 @@ class SurrogateEnv:
         self.bin_capacity = float(ep["bin_capacity"])
         self.dig_rate = float(ep["dig_rate_per_s"])
         self.dump_rate = float(ep.get("dump_rate_per_s", self.dig_rate))
+        # 坡度动力学增益（上坡减速 / 侧坡侧滑）
+        self.uphill_gain = float(ep.get("uphill_gain", 2.0))
+        self.sideslip_gain = float(ep.get("sideslip_gain", 0.15))
         self.robot_names = list(self.scenario["robots"].keys())
         # 机器人名 → 角色（scout/excavator/hauler，小写）
         self.role_of = {n: str(self.scenario["robots"][n].get("role", n)).lower()
@@ -104,13 +114,17 @@ class SurrogateEnv:
         self.delivered_value = 0.0  # 交付价值（价值加权，优化目标）
         self.episode_reward = 0.0
         self.reward_breakdown = {"dig": 0.0, "load": 0.0, "deliver": 0.0, "detect": 0.0,
-                                 "app": 0.0, "step": 0.0}
+                                 "app": 0.0, "step": 0.0, "slope": 0.0}
         self.app_by_agent = {n: 0.0 for n in self.robot_names}
         self.per_agent_reward = {n: 0.0 for n in self.robot_names}
         self.step_count = 0
         self.tool = {n: 0 for n in self.robot_names}
         self.prev_goal_dist = {}
         self.prev_goal_key = {}
+        self.roll_pitch = {n: (0.0, 0.0) for n in self.robot_names}
+        if self.allocator is not None:
+            self.allocator.reset()
+        reset_rule_state()
         self._configure_stage()
         return self._obs(), self._info()
 
@@ -131,11 +145,19 @@ class SurrogateEnv:
         reward = self._update_task()
         self.step_count += 1
         self.episode_reward += reward
-        terminated = self.step_count >= self.max_steps
+        terminated = self.step_count >= self.max_steps or self._tip_check()
         truncated = False
         return self._obs(), reward, terminated, truncated, self._info()
 
-    # ---------- 运动学 ----------
+    def _tip_check(self):
+        """|roll| 或 |pitch| 超阈值判翻倒终止。"""
+        for n in self.robot_names:
+            roll, pitch = self.roll_pitch[n]
+            if abs(roll) > TIP_LIMIT_RAD or abs(pitch) > TIP_LIMIT_RAD:
+                return True
+        return False
+
+    # ---------- 运动学（含地形坡度效应：上坡减速 / 侧坡侧滑 / roll-pitch 反馈）----------
     def _apply_action(self, action):
         dt = self.control_horizon
         for name in self.robot_names:
@@ -144,18 +166,27 @@ class SurrogateEnv:
             vx = float(np.clip(drive[0], -1.0, 1.0)) * self.max_lin * self.speed_scale[name]
             wz = float(np.clip(drive[1], -1.0, 1.0)) * self.max_ang * self.turn_scale[name]
             x, y, yaw = self.pose[name]
+            # 坡度效应（当前位姿处）：上坡减速 + 侧坡侧滑
+            fwd_slope, lat_slope = self.terrain.slopes(x, y, yaw)
+            vx *= max(0.2, 1.0 - self.uphill_gain * max(0.0, fwd_slope))  # 上坡减速
             yaw = yaw + wz * dt
             x = x + vx * math.cos(yaw) * dt
             y = y + vx * math.sin(yaw) * dt
+            # 侧坡侧滑：向坡下横向漂移
+            drift = -lat_slope * self.sideslip_gain * dt
+            x += drift * (-math.sin(yaw))
+            y += drift * math.cos(yaw)
             self.pose[name] = (x, y, yaw)
             self.vel[name] = (vx, wz)
+            self.roll_pitch[name] = self.terrain.roll_pitch(x, y, yaw)
             if isinstance(a, dict) and "tool" in a:
                 self.tool[name] = int(a["tool"])
 
     # ---------- 任务逻辑 ----------
     def _update_task(self):
         dt = self.control_horizon
-        rb = {"dig": 0.0, "load": 0.0, "deliver": 0.0, "detect": 0.0, "app": 0.0, "step": 0.0}
+        rb = {"dig": 0.0, "load": 0.0, "deliver": 0.0, "detect": 0.0, "app": 0.0,
+              "step": 0.0, "slope": 0.0}
 
         # 探测：所有 scout（只更新发现状态，不再给离散一次性奖励——探索由 app 势函数驱动，
         # 去掉离散跳变以降 Q 噪声）
@@ -231,15 +262,25 @@ class SurrogateEnv:
             self.prev_goal_key[name] = key
 
         rb["step"] = -self.w["step"] * dt
-        reward = rb["dig"] + rb["load"] + rb["deliver"] + rb["detect"] + rb["app"] + rb["step"]
+        # 陡坡惩罚：坡度超过阈值才罚，鼓励避开陡坡（逐车累加）
+        slope_by_agent = {n: 0.0 for n in self.robot_names}
+        for name in self.robot_names:
+            x, y, yaw = self.pose[name]
+            fwd, lat = self.terrain.slopes(x, y, yaw)
+            mag = math.hypot(fwd, lat)
+            if mag > SLOPE_PENALTY_TAN:
+                slope_by_agent[name] = -self.w["slope"] * (mag - SLOPE_PENALTY_TAN) * dt
+                rb["slope"] += slope_by_agent[name]
+        reward = (rb["dig"] + rb["load"] + rb["deliver"] + rb["detect"] + rb["app"]
+                  + rb["step"] + rb["slope"])
         for k, v in rb.items():
             self.reward_breakdown[k] += v
         for n in self.robot_names:
             self.app_by_agent[n] += app_by_agent[n]
-        # 逐机器人奖励 shaping：团队 deliver + step + 自身 app + 角色专属贡献
+        # 逐机器人奖励 shaping：团队 deliver + step + 自身 app + 自身坡度惩罚 + 角色专属贡献
         for name in self.robot_names:
             role = self.role_of[name]
-            r_i = rb["deliver"] + rb["step"] + app_by_agent[name]
+            r_i = rb["deliver"] + rb["step"] + app_by_agent[name] + slope_by_agent[name]
             if role == "scout":
                 r_i += rb["detect"]
             elif role == "excavator":
@@ -282,6 +323,8 @@ class SurrogateEnv:
         obs["detected"] = np.array([1.0 if d else 0.0 for d in self.detected], dtype=np.float32)
         obs["depots"] = np.array(self.depots, dtype=np.float32)      # (n_depots, 2)
         obs["depot"] = obs["depots"][0] if len(self.depots) > 0 else np.zeros(2, dtype=np.float32)
+        obs["roll_pitch"] = {n: np.array(self.roll_pitch[n], dtype=np.float32)
+                             for n in self.robot_names}
         obs["goals"] = {}
         for name in self.robot_names:
             g = goal_for(self, name)
@@ -296,9 +339,13 @@ class SurrogateEnv:
         return np.array([x, y, yaw, vx, wz], dtype=np.float32)
 
     def _info(self):
+        max_roll = max((abs(self.roll_pitch[n][0]) for n in self.robot_names), default=0.0)
+        max_pitch = max((abs(self.roll_pitch[n][1]) for n in self.robot_names), default=0.0)
         return {"delivered": float(self.delivered),
                 "delivered_value": float(self.delivered_value),
                 "episode_reward": float(self.episode_reward),
                 "reward_breakdown": dict(self.reward_breakdown),
                 "per_agent_reward": dict(self.per_agent_reward),
+                "max_roll_deg": float(math.degrees(max_roll)),
+                "max_pitch_deg": float(math.degrees(max_pitch)),
                 "step": int(self.step_count)}

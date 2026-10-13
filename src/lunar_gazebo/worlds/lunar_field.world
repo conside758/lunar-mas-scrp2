@@ -13,16 +13,16 @@
 
     <!-- 场景：降低环境光、深色天空背景，避免过曝并提高对比度 -->
     <scene>
-      <ambient>0.30 0.30 0.34 1</ambient>
+      <ambient>0.62 0.62 0.66 1</ambient>
       <background>0.05 0.06 0.10 1</background>
-      <shadows>true</shadows>
+      <shadows>false</shadows>
     </scene>
 
-    <!-- 自定义月面地面（灰棕色；用大盒子代替 plane，保证 ODE 摩擦稳定生效） -->
+    <!-- 安全地板（仅碰撞，无视觉，压到地形下方）：防止机器人从地形网格缝隙掉落 -->
     <model name="lunar_ground">
       <static>true</static>
       <link name="link">
-        <pose>0 0 -0.05 0 0 0</pose>
+        <pose>0 0 -1.05 0 0 0</pose>
         <collision name="collision">
           <geometry>
             <box>
@@ -44,20 +44,14 @@
             </friction>
           </surface>
         </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>200 200 0.1</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.30 0.28 0.26 1</ambient>
-            <diffuse>0.55 0.50 0.46 1</diffuse>
-            <specular>0.02 0.02 0.02 1</specular>
-          </material>
-        </visual>
       </link>
     </model>
+
+    <!-- 导入的月面地形（OBJ+贴图，视觉场地模型） -->
+    <include>
+      <uri>model://lunar_terrain</uri>
+      <static>true</static>
+    </include>
 
     <physics name="default_physics" default="true" type="ode">
       <max_step_size>0.001</max_step_size>
@@ -128,5 +122,71 @@
       </link>
       <pose>2.0 -3.0 0.25 0 0 0.6</pose>
     </model>
+
+    <!-- 俯视相机：用于实景视频录制。Gazebo 相机传感器沿 pose 的 +X 轴看，
+         pitch=-1.5708 使 +X 指向世界 +Z 的反方向？经验修正：直接垂直向下取整场俯视图。
+         相机 +X 轴经 pitch 旋转后指向地面（-Z），故用 pitch=-π/2 时看下方。 -->
+    <model name="demo_camera">
+      <pose>0 -7 7 0 0.785 1.5708</pose>
+      <static>true</static>
+      <link name="camera_link">
+        <sensor type="camera" name="camera1">
+          <update_rate>5</update_rate>
+          <visualize>false</visualize>
+          <camera name="head">
+            <horizontal_fov>1.1</horizontal_fov>
+            <image>
+              <width>960</width>
+              <height>540</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>100</far>
+            </clip>
+          </camera>
+          <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+            <ros>
+              <namespace>demo_cam</namespace>
+            </ros>
+            <frame_name>camera_link</frame_name>
+          </plugin>
+        </sensor>
+      </link>
+    </model>
+
+    <!-- 资源可视化标记（价值分色：value3=红 / value2=橙 / value1=绿），对应 scenario_6r.yaml -->
+    <model name="resource_0"><static>true</static><pose>2.0 1.5 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.85 0.20 0.20 1</ambient><diffuse>0.85 0.20 0.20 1</diffuse></material></visual></link></model>
+    <model name="resource_1"><static>true</static><pose>-2.5 2.0 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.85 0.20 0.20 1</ambient><diffuse>0.85 0.20 0.20 1</diffuse></material></visual></link></model>
+    <model name="resource_2"><static>true</static><pose>1.5 -2.5 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.85 0.55 0.12 1</ambient><diffuse>0.85 0.55 0.12 1</diffuse></material></visual></link></model>
+    <model name="resource_3"><static>true</static><pose>3.0 -1.0 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.85 0.55 0.12 1</ambient><diffuse>0.85 0.55 0.12 1</diffuse></material></visual></link></model>
+    <model name="resource_4"><static>true</static><pose>-3.0 -1.5 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.25 0.80 0.30 1</ambient><diffuse>0.25 0.80 0.30 1</diffuse></material></visual></link></model>
+    <model name="resource_5"><static>true</static><pose>0.5 3.0 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.25 0.80 0.30 1</ambient><diffuse>0.25 0.80 0.30 1</diffuse></material></visual></link></model>
+    <model name="resource_6"><static>true</static><pose>-1.0 -3.0 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.25 0.80 0.30 1</ambient><diffuse>0.25 0.80 0.30 1</diffuse></material></visual></link></model>
+    <model name="resource_7"><static>true</static><pose>3.5 1.0 0.15 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><cylinder><radius>0.4</radius><length>0.3</length></cylinder></geometry>
+        <material><ambient>0.25 0.80 0.30 1</ambient><diffuse>0.25 0.80 0.30 1</diffuse></material></visual></link></model>
+
+    <!-- 卸载点可视化标记（黄色方块） -->
+    <model name="depot_0"><static>true</static><pose>-2.0 -1.5 0.2 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><box><size>0.9 0.9 0.4</size></box></geometry>
+        <material><ambient>0.90 0.80 0.15 1</ambient><diffuse>0.90 0.80 0.15 1</diffuse></material></visual></link></model>
+    <model name="depot_1"><static>true</static><pose>2.5 2.0 0.2 0 0 0</pose>
+      <link name="link"><visual name="visual"><geometry><box><size>0.9 0.9 0.4</size></box></geometry>
+        <material><ambient>0.90 0.80 0.15 1</ambient><diffuse>0.90 0.80 0.15 1</diffuse></material></visual></link></model>
   </world>
 </sdf>

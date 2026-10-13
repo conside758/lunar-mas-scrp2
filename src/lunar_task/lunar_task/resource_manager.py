@@ -29,13 +29,19 @@ class ResourceManager(Node):
         self.depot_pub = self.create_publisher(PoseStamped, 'depot', latched)
         self.reset_srv = self.create_service(Trigger, 'reset_scenario', self.reset_cb)
         self.publish()
+        ndep = len(self._depots())
         self.get_logger().info(
             f'ResourceManager ready: {len(self.scenario["resources"])} resources, '
-            f'depot=({self.scenario["depot"]["x"]},{self.scenario["depot"]["y"]})')
+            f'{ndep} depot(s)')
 
     def load_scenario(self):
         with open(self.scenario_file, 'r', encoding='utf-8') as f:
             self.scenario = yaml.safe_load(f)
+
+    def _depots(self):
+        if 'depots' in self.scenario:
+            return self.scenario['depots']
+        return [self.scenario['depot']]
 
     def publish(self):
         arr = ResourceArray()
@@ -50,7 +56,8 @@ class ResourceManager(Node):
             arr.zones.append(z)
         self.res_pub.publish(arr)
 
-        depot = self.scenario['depot']
+        # 兼容旧单 depot 话题：发布第一个卸载点（多 depot 场景按顺序取首个）
+        depot = self._depots()[0]
         dp = PoseStamped()
         dp.header.stamp = self.get_clock().now().to_msg()
         dp.header.frame_id = 'world'

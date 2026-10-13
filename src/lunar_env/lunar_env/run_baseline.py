@@ -1,13 +1,14 @@
-"""运行规则基线：用 rule_policy 驱动 lunar_env 跑一个完整回合并记录指标。
+"""运行规则基线（6 机器人拍卖版）：用 lunar_rl.rule_policy.rule_action 驱动 lunar_env。
 
-在 bringup 进程组内运行（绕开沙箱跨进程 DDS 限制）。默认跑满 max_steps。
+目标点取自 obs["goals"]（由 lunar_rl.rewards.goal_for 计算：scout→最近未发现资源；
+excavator→拍卖分配资源；hauler→最近 depot / 有货 excavator）。在 bringup 进程组内运行。
 用法：ros2 run lunar_env run_baseline <scenario_file>
 """
 import sys
 
 import rclpy
 from lunar_env.env import LunarEnv
-from lunar_env.rule_policy import rule_action
+from lunar_rl.rule_policy import rule_action
 
 
 def main(args=None):
@@ -24,15 +25,22 @@ def main(args=None):
         total += reward
         steps += 1
         if steps % 20 == 0:
+            det = info.get('detected', '?')
+            buckets = {n: round(obs[n][5], 1) for n in ("excavator_0", "excavator_1")}
+            bins = {n: round(obs[n][5], 1) for n in ("hauler_0", "hauler_1")}
+            pos = {n: (round(obs[n][0], 2), round(obs[n][1], 2))
+                   for n in ("excavator_0", "excavator_1", "hauler_0", "hauler_1")}
+            goals = {n: (round(obs['goals'][n][0], 2), round(obs['goals'][n][1], 2))
+                     for n in ("excavator_0", "excavator_1", "hauler_0", "hauler_1")}
             print(f"[baseline] step={steps} delivered={info['delivered']:.1f} "
-                  f"excavator=({obs['excavator'][0]:.2f},{obs['excavator'][1]:.2f},"
-                  f"yaw={obs['excavator'][2]:.2f}) bucket={obs['excavator'][5]:.1f} "
-                  f"hauler=({obs['hauler'][0]:.2f},{obs['hauler'][1]:.2f}) "
-                  f"bin={obs['hauler'][5]:.1f}", flush=True)
+                  f"delivered_value={info['delivered_value']:.1f} det={det} "
+                  f"buckets={buckets} bins={bins}", flush=True)
+            print(f"    pos={pos} goals={goals}", flush=True)
         if terminated or truncated:
             break
     print(f"[baseline] finished: steps={steps} reward={total:.2f} "
-          f"delivered={info['delivered']:.1f}")
+          f"delivered={info['delivered']:.1f} delivered_value={info['delivered_value']:.1f}",
+          flush=True)
     env.close()
     rclpy.shutdown()
 

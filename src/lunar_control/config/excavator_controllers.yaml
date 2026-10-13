@@ -27,6 +27,19 @@
     enable_odom_tf: true
     cmd_vel_timeout: 0.5
     use_stamped_vel: false
+    # 平滑 cmd_vel 阶跃，防止瞬时加速/转向导致倾倒
+    linear.x.has_velocity_limits: true
+    linear.x.max_velocity: 0.4
+    linear.x.min_velocity: -0.4
+    linear.x.has_acceleration_limits: true
+    linear.x.max_acceleration: 0.6
+    linear.x.min_acceleration: -0.6
+    angular.z.has_velocity_limits: true
+    angular.z.max_velocity: 0.8
+    angular.z.min_velocity: -0.8
+    angular.z.has_acceleration_limits: true
+    angular.z.max_acceleration: 1.2
+    angular.z.min_acceleration: -1.2
 
 /**/arm_controller:
   ros__parameters:

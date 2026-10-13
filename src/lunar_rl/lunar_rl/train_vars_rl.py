@@ -14,6 +14,7 @@ import torch
 from lunar_rl.mappo_vars import MAPPOVars, FLAT_DIM
 from lunar_rl.networks import (ROBOT_NAMES, Actor, Critic, QCritic,
                                VarRoleAwareActor)
+from lunar_rl.obs import FIXED_DIM
 from lunar_rl.registry import joint_action_dim
 from lunar_rl.runlog import plot_curves, run_dir, write_summary
 from lunar_rl.surrogate import SurrogateEnv
@@ -21,7 +22,7 @@ from lunar_rl.surrogate import SurrogateEnv
 
 def build_actors(var, std_init=-0.7):
     if var:
-        return {n: VarRoleAwareActor(fixed_dim=13, hidden=128, drive_logstd_init=std_init)
+        return {n: VarRoleAwareActor(fixed_dim=FIXED_DIM, hidden=128, drive_logstd_init=std_init)
                 for n in ROBOT_NAMES}
     return {n: Actor(obs_dim=FLAT_DIM, hidden=128, drive_logstd_init=std_init)
             for n in ROBOT_NAMES}

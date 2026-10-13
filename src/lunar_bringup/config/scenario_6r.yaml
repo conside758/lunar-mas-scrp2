@@ -7,11 +7,11 @@ world:
 robots:
   scout_0:
     xacro: "scout.urdf.xacro"
-    entity: "scout"
+    entity: "scout_0"
     namespace: "scout_0"
-    x: 0.0
-    y: 0.0
-    z: 0.34
+    x: -1.86
+    y: 1.38
+    z: 0.374
     yaw: 0.0
     controllers_yaml: "scout_controllers.yaml"
     controllers: ["joint_state_broadcaster", "legs_controller"]
@@ -20,11 +20,11 @@ robots:
     role: "SCOUT"
   scout_1:
     xacro: "scout.urdf.xacro"
-    entity: "scout"
+    entity: "scout_1"
     namespace: "scout_1"
-    x: 0.5
-    y: -0.5
-    z: 0.34
+    x: 0.80
+    y: -1.18
+    z: 0.342
     yaw: 0.0
     controllers_yaml: "scout_controllers.yaml"
     controllers: ["joint_state_broadcaster", "legs_controller"]
@@ -33,11 +33,11 @@ robots:
     role: "SCOUT"
   excavator_0:
     xacro: "excavator.urdf.xacro"
-    entity: "excavator"
+    entity: "excavator_0"
     namespace: "excavator_0"
-    x: 0.8
-    y: 0.5
-    z: 0.12
+    x: 0.80
+    y: 0.93
+    z: 0.111
     yaw: 0.0
     controllers_yaml: "excavator_controllers.yaml"
     controllers: ["joint_state_broadcaster", "drive_controller", "arm_controller"]
@@ -45,11 +45,11 @@ robots:
     role: "EXCAVATOR"
   excavator_1:
     xacro: "excavator.urdf.xacro"
-    entity: "excavator"
+    entity: "excavator_1"
     namespace: "excavator_1"
-    x: -0.8
-    y: 0.5
-    z: 0.12
+    x: -2.50
+    y: -0.99
+    z: 0.145
     yaw: 0.0
     controllers_yaml: "excavator_controllers.yaml"
     controllers: ["joint_state_broadcaster", "drive_controller", "arm_controller"]
@@ -57,11 +57,11 @@ robots:
     role: "EXCAVATOR"
   hauler_0:
     xacro: "hauler.urdf.xacro"
-    entity: "hauler"
+    entity: "hauler_0"
     namespace: "hauler_0"
-    x: -0.8
-    y: -0.5
-    z: 0.12
+    x: -0.80
+    y: -0.13
+    z: 0.138
     yaw: 0.0
     controllers_yaml: "hauler_controllers.yaml"
     controllers: ["joint_state_broadcaster", "drive_controller", "dump_controller"]
@@ -69,11 +69,11 @@ robots:
     role: "HAULER"
   hauler_1:
     xacro: "hauler.urdf.xacro"
-    entity: "hauler"
+    entity: "hauler_1"
     namespace: "hauler_1"
-    x: 0.8
-    y: -0.5
-    z: 0.12
+    x: -1.47
+    y: -2.34
+    z: 0.173
     yaw: 0.0
     controllers_yaml: "hauler_controllers.yaml"
     controllers: ["joint_state_broadcaster", "drive_controller", "dump_controller"]
@@ -101,9 +101,10 @@ episode:
   max_time_s: 120.0
   control_horizon_s: 0.5
   sim_time_step_s: 0.01
+  detect_radius: 3.0   # Scout 探测半径（1.5→3.0：Scout URDF 带 30m LIDAR，1.5m 过小导致整回合只探测 0~3 资源）
   dig_radius: 0.6
-  load_radius: 0.7
-  dump_radius: 0.7
+  load_radius: 1.5     # 会合装载半径（0.7→1.5：慢动力学下 0.7m 对掘机-运输机会合过严，导致 BC 装载始终失败）
+  dump_radius: 1.5     # 卸载半径（0.7→1.5：同上，运输车到 depot 距离放宽）
   bucket_capacity: 4.0
   bin_capacity: 10.0
   dig_rate_per_s: 2.0

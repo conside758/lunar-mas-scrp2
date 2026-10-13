@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="hauler">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg name)">
+  <xacro:arg name="name" default="hauler"/>
+  <xacro:arg name="ns" default="hauler"/>
   <xacro:include filename="$(find lunar_descriptions)/urdf/common.xacro"/>
 
   <!-- ===== 底盘 ===== -->
@@ -13,6 +15,16 @@
     </collision>
     <xacro:box_inertial mass="9.0" lx="0.46" ly="0.34" lz="0.12"/>
   </link>
+
+  <!-- 低配重：把重心压到接近地面，抑制料斗倾倒/急停时的倾倒失稳 -->
+  <link name="ballast_link">
+    <xacro:box_inertial mass="4.0" lx="0.34" ly="0.30" lz="0.04"/>
+  </link>
+  <joint name="ballast_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ballast_link"/>
+    <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+  </joint>
 
   <xacro:drive_wheel prefix="left" parent="base_link" xyz="0 0.19 -0.04" rpy="1.5708 0 0" mass="0.5" radius="0.08" width="0.04"/>
   <xacro:drive_wheel prefix="right" parent="base_link" xyz="0 -0.19 -0.04" rpy="1.5708 0 0" mass="0.5" radius="0.08" width="0.04"/>
@@ -43,10 +55,10 @@
   <gazebo>
     <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
       <robot_param>robot_description</robot_param>
-      <robot_param_node>hauler_rsp</robot_param_node>
+      <robot_param_node>$(arg name)_rsp</robot_param_node>
       <parameters>$(find lunar_control)/config/hauler_controllers.yaml</parameters>
       <ros>
-        <namespace>hauler</namespace>
+        <namespace>$(arg ns)</namespace>
       </ros>
     </plugin>
   </gazebo>
